@@ -69,7 +69,7 @@ const Login: React.FC = () => {
         await register(formData.email, formData.password, formData.username);
         toast({
           title: "Success",
-          description: "Account created successfully! Welcome to GameVault!"
+          description: "Account created successfully! Welcome to Monlyking!"
         });
       }
     } catch (error: any) {
@@ -105,7 +105,7 @@ const Login: React.FC = () => {
         <CardHeader className="space-y-1">
           <div className="flex items-center justify-center mb-4">
             <i className="fas fa-gamepad text-primary text-3xl mr-2"></i>
-            <span className="text-2xl font-bold">GameVault</span>
+            <span className="text-2xl font-bold">Monlyking</span>
           </div>
           <CardTitle className="text-2xl text-center">
             {isLogin ? 'Welcome back' : 'Create account'}

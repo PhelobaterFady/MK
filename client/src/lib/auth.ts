@@ -53,11 +53,9 @@ export const registerWithEmail = async (email: string, password: string, usernam
       isBanned: false
     };
 
-    // Save user data
-    await set(ref(database, `users/${result.user.uid}`), userData);
-    
-    // Reserve username
-    await set(ref(database, `usernames/${username}`), result.user.uid);
+    // Save user data using firebase-api service
+    const { createUser } = await import('../services/firebase-api');
+    await createUser(result.user.uid, userData);
 
     return result.user;
   } catch (error: any) {
@@ -66,7 +64,12 @@ export const registerWithEmail = async (email: string, password: string, usernam
 };
 
 export const loginWithGoogle = async () => {
-  await signInWithRedirect(auth, googleProvider);
+  try {
+    await signInWithRedirect(auth, googleProvider);
+  } catch (error: any) {
+    console.error("Google Sign-In Error:", error);
+    throw new Error(error.message);
+  }
 };
 
 export const handleRedirectResult = async () => {
@@ -97,8 +100,8 @@ export const handleRedirectResult = async () => {
           isBanned: false
         };
 
-        await set(userRef, userData);
-        await set(ref(database, `usernames/${username}`), result.user.uid);
+        const { createUser } = await import('../services/firebase-api');
+        await createUser(result.user.uid, userData);
       }
       
       return result.user;
@@ -119,20 +122,8 @@ export const logout = async () => {
 
 export const getUserProfile = async (uid: string): Promise<AppUser | null> => {
   try {
-    const userRef = ref(database, `users/${uid}`);
-    const snapshot = await get(userRef);
-    
-    if (snapshot.exists()) {
-      const data = snapshot.val();
-      return {
-        id: uid,
-        ...data,
-        joinDate: new Date(data.joinDate),
-        lastActive: data.lastActive ? new Date(data.lastActive) : undefined
-      };
-    }
-    
-    return null;
+    const { getUser } = await import('../services/firebase-api');
+    return await getUser(uid);
   } catch (error: any) {
     console.error("Error fetching user profile:", error);
     return null;

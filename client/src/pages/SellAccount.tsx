@@ -677,7 +677,7 @@ const SellAccount: React.FC = () => {
                   <i className="fas fa-info-circle"></i>
                   <AlertDescription>
                     <strong>Important:</strong> By listing your account, you agree to our terms of service.
-                    GameVault takes a 5% commission on successful sales. Accounts must be legitimate and
+                    Monlyking takes a 5% commission on successful sales. Accounts must be legitimate and
                     accurately described to avoid suspension.
                   </AlertDescription>
                 </Alert>

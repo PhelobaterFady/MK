@@ -18,7 +18,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <div>
               <div className="flex items-center space-x-2 mb-4">
                 <i className="fas fa-gamepad text-primary text-2xl"></i>
-                <span className="text-xl font-bold text-foreground">GameVault</span>
+                <span className="text-xl font-bold text-foreground">Monlyking</span>
               </div>
               <p className="text-muted-foreground mb-4">The trusted marketplace for buying and selling premium gaming accounts securely.</p>
               <div className="flex space-x-3">
@@ -69,7 +69,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </div>
           
           <div className="pt-8 border-t border-border flex flex-col md:flex-row justify-between items-center">
-            <p className="text-muted-foreground">&copy; 2024 GameVault. All rights reserved.</p>
+            <p className="text-muted-foreground">&copy; 2024 Monlyking. All rights reserved.</p>
             <div className="flex items-center space-x-6 mt-4 md:mt-0">
               <div className="flex items-center space-x-2">
                 <i className="fas fa-shield-check text-green-400"></i>

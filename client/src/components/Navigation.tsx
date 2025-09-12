@@ -38,7 +38,7 @@ const Navigation: React.FC = () => {
           <div className="flex items-center space-x-8">
             <Link href="/" className="flex items-center space-x-2">
               <i className="fas fa-gamepad text-primary text-2xl"></i>
-              <span className="text-xl font-bold text-foreground">GameVault</span>
+              <span className="text-xl font-bold text-foreground">Monlyking</span>
             </Link>
             <div className="hidden md:flex space-x-6">
               <Link href="/marketplace" className={`text-muted-foreground hover:text-primary transition-colors ${location === '/marketplace' ? 'text-primary' : ''}`}>

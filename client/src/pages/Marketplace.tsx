@@ -7,64 +7,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import AccountCard from '../components/AccountCard';
-import { GameAccount } from '@shared/schema';
+import { GameAccount, User } from '@shared/schema';
+import { getGameAccounts, getGameAccountsByGame, getUser } from '../services/firebase-api';
 
-// Mock data - in real app this would come from Firebase
-const MOCK_ACCOUNTS: (GameAccount & { seller: { username: string; level: number; rating: number; } })[] = [
-  {
-    id: '1',
-    sellerId: 'seller1',
-    game: 'fifa',
-    title: 'Premium FIFA 24 Account - 95 OVR Team',
-    description: 'High-end FIFA Ultimate Team account with incredible players...',
-    price: 299,
-    images: ['https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=250'],
-    gameSpecificData: {
-      level: 87,
-      coins: '2.5M',
-      rating: '95 OVR',
-      region: 'NA'
-    },
-    status: 'active',
-    views: 145,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    seller: {
-      username: 'mike_trader',
-      level: 4,
-      rating: 4.9
-    }
-  },
-  {
-    id: '2',
-    sellerId: 'seller2',
-    game: 'valorant',
-    title: 'Immortal Valorant Account - All Agents',
-    description: 'High-rank Valorant account with all agents unlocked...',
-    price: 450,
-    images: ['https://images.unsplash.com/photo-1593305841991-05c297ba4575?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=250'],
-    gameSpecificData: {
-      rank: 'Immortal 2',
-      rr: 2847,
-      agents: '22/22',
-      skins: 47
-    },
-    status: 'active',
-    views: 89,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    seller: {
-      username: 'alex_pro',
-      level: 3,
-      rating: 5.0
-    }
-  }
-];
+// Type for account with seller info
+type AccountWithSeller = GameAccount & { 
+  seller: { 
+    username: string; 
+    level: number; 
+    rating: number; 
+  } 
+};
 
 const Marketplace: React.FC = () => {
   const [location] = useLocation();
-  const [accounts, setAccounts] = useState(MOCK_ACCOUNTS);
-  const [filteredAccounts, setFilteredAccounts] = useState(MOCK_ACCOUNTS);
+  const [accounts, setAccounts] = useState<AccountWithSeller[]>([]);
+  const [filteredAccounts, setFilteredAccounts] = useState<AccountWithSeller[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
     game: 'all',
     priceMin: '',
@@ -75,11 +34,44 @@ const Marketplace: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const accountsPerPage = 9;
 
+  // Load accounts from Firebase
+  useEffect(() => {
+    const loadAccounts = async () => {
+      try {
+        setLoading(true);
+        const gameAccounts = await getGameAccounts();
+        
+        // Get seller info for each account
+        const accountsWithSellers = await Promise.all(
+          gameAccounts.map(async (account) => {
+            const seller = await getUser(account.sellerId);
+            return {
+              ...account,
+              seller: {
+                username: seller?.username || 'Unknown',
+                level: seller?.level || 1,
+                rating: seller?.rating || 0
+              }
+            };
+          })
+        );
+        
+        setAccounts(accountsWithSellers);
+      } catch (error) {
+        console.error('Error loading accounts:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadAccounts();
+  }, []);
+
   // Get game filter from URL
   useEffect(() => {
     const params = new URLSearchParams(location.split('?')[1] || '');
     const gameParam = params.get('game');
-    if (gameParam) {
+    if (gameParam && gameParam !== 'all') {
       setFilters(prev => ({ ...prev, game: gameParam }));
     }
   }, [location]);
@@ -131,6 +123,17 @@ const Marketplace: React.FC = () => {
   const handleAccountClick = (accountId: string) => {
     window.location.href = `/account/${accountId}`;
   };
+
+  if (loading) {
+    return (
+      <div className="py-16 px-4 sm:px-6 lg:px-8 bg-card/30">
+        <div className="max-w-7xl mx-auto text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading accounts...</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleFilterChange = (key: string, value: any) => {
     setFilters(prev => ({ ...prev, [key]: value }));
@@ -251,7 +254,7 @@ const Marketplace: React.FC = () => {
 
             {/* Account Listings Grid */}
             <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8" data-testid="accounts-grid">
-              {paginatedAccounts.map((account) => (
+              {paginatedAccounts.map((account: AccountWithSeller) => (
                 <AccountCard
                   key={account.id}
                   account={account}
