@@ -281,7 +281,7 @@ const Dashboard: React.FC = () => {
                   </div>
                 </div>
               </TabsContent>
-            </Tabs>
+            </CardContent>
           </Tabs>
         </Card>
       </div>

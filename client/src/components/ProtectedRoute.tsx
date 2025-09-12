@@ -1,5 +1,5 @@
-import React from 'react';
-import { Navigate } from 'wouter';
+import React, { useEffect } from 'react';
+import { useLocation } from 'wouter';
 import { useAuth } from '../contexts/AuthContext';
 
 interface ProtectedRouteProps {
@@ -9,6 +9,17 @@ interface ProtectedRouteProps {
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, adminOnly = false }) => {
   const { currentUser, userProfile, loading } = useAuth();
+  const [, navigate] = useLocation();
+
+  useEffect(() => {
+    if (!loading) {
+      if (!currentUser) {
+        navigate('/login');
+      } else if (adminOnly && userProfile?.role !== 'admin') {
+        navigate('/');
+      }
+    }
+  }, [currentUser, userProfile, loading, adminOnly, navigate]);
 
   if (loading) {
     return (
@@ -18,12 +29,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, adminOnly = f
     );
   }
 
-  if (!currentUser) {
-    return <Navigate to="/login" />;
-  }
-
-  if (adminOnly && userProfile?.role !== 'admin') {
-    return <Navigate to="/" />;
+  if (!currentUser || (adminOnly && userProfile?.role !== 'admin')) {
+    return null;
   }
 
   return <>{children}</>;

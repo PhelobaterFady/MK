@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { ref, push, onValue, query, orderByChild, equalTo } from 'firebase/database';
+import { ref, push, onValue, query, orderByChild, equalTo, get } from 'firebase/database';
 import { database } from '../lib/firebase';
 import { ChatMessage, InsertChatMessage } from '@shared/schema';
-import { useAuth } from './useAuth';
+import { useAuth } from '../contexts/AuthContext';
 
 export function useChat(orderId: string) {
   const { currentUser } = useAuth();

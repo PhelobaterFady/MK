@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, Navigate } from 'wouter';
+import { Link, useLocation } from 'wouter';
 import { useAuth } from '../contexts/AuthContext';
 import { handleRedirectResult } from '../lib/auth';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 const Login: React.FC = () => {
   const { currentUser, login, register, loginWithGoogle } = useAuth();
   const { toast } = useToast();
+  const [, navigate] = useLocation();
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
     email: '',
@@ -43,9 +44,11 @@ const Login: React.FC = () => {
   }, [toast]);
 
   // Redirect if already logged in
-  if (currentUser) {
-    return <Navigate to="/" />;
-  }
+  useEffect(() => {
+    if (currentUser) {
+      navigate('/');
+    }
+  }, [currentUser, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

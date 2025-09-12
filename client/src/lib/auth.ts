@@ -11,6 +11,8 @@ import { ref, set, get } from "firebase/database";
 import { auth, database } from "./firebase";
 import { User as AppUser, InsertUser } from "@shared/schema";
 
+export { User as FirebaseUser } from "firebase/auth";
+
 const googleProvider = new GoogleAuthProvider();
 
 export const loginWithEmail = async (email: string, password: string) => {
