@@ -15,18 +15,7 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-let app;
-try {
-  app = initializeApp(firebaseConfig);
-} catch (error: any) {
-  // If app already initialized, get the existing app
-  if (error.code === 'app/duplicate-app') {
-    const { getApp } = require('firebase/app');
-    app = getApp();
-  } else {
-    throw error;
-  }
-}
+const app = initializeApp(firebaseConfig);
 
 // Initialize Firebase services
 export const auth = getAuth(app);

@@ -15,56 +15,97 @@ interface AuthContextType {
   logout: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType>({
+  currentUser: null,
+  userProfile: null,
+  loading: true,
+  login: async () => {},
+  register: async () => {},
+  loginWithGoogle: async () => {},
+  logout: async () => {}
+});
 
-export const useAuth = () => {
+export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
   return context;
-};
+}
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [userProfile, setUserProfile] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setCurrentUser(user);
-      
-      if (user) {
-        const profile = await getUserProfile(user.uid);
-        setUserProfile(profile);
-      } else {
-        setUserProfile(null);
-      }
-      
+    let unsubscribe: (() => void) | undefined;
+    
+    try {
+      unsubscribe = onAuthStateChanged(auth, async (user) => {
+        setCurrentUser(user);
+        
+        if (user) {
+          try {
+            const profile = await getUserProfile(user.uid);
+            setUserProfile(profile);
+          } catch (error) {
+            console.error('Error loading user profile:', error);
+            setUserProfile(null);
+          }
+        } else {
+          setUserProfile(null);
+        }
+        
+        setLoading(false);
+      });
+    } catch (error) {
+      console.error('Error setting up auth listener:', error);
       setLoading(false);
-    });
+    }
 
-    return unsubscribe;
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, []);
 
   const login = async (email: string, password: string) => {
-    const { loginWithEmail } = await import('../lib/auth');
-    await loginWithEmail(email, password);
+    try {
+      const { loginWithEmail } = await import('../lib/auth');
+      await loginWithEmail(email, password);
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
+    }
   };
 
   const register = async (email: string, password: string, username: string) => {
-    const { registerWithEmail } = await import('../lib/auth');
-    await registerWithEmail(email, password, username);
+    try {
+      const { registerWithEmail } = await import('../lib/auth');
+      await registerWithEmail(email, password, username);
+    } catch (error) {
+      console.error('Registration error:', error);
+      throw error;
+    }
   };
 
   const loginWithGoogle = async () => {
-    const { loginWithGoogle: googleLogin } = await import('../lib/auth');
-    await googleLogin();
+    try {
+      const { loginWithGoogle: googleLogin } = await import('../lib/auth');
+      await googleLogin();
+    } catch (error) {
+      console.error('Google login error:', error);
+      throw error;
+    }
   };
 
   const logout = async () => {
-    const { logout: authLogout } = await import('../lib/auth');
-    await authLogout();
+    try {
+      const { logout: authLogout } = await import('../lib/auth');
+      await authLogout();
+    } catch (error) {
+      console.error('Logout error:', error);
+      throw error;
+    }
   };
 
   const value: AuthContextType = {
@@ -82,4 +123,4 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       {children}
     </AuthContext.Provider>
   );
-};
+}
