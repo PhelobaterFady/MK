@@ -5,13 +5,13 @@ import {
   getRedirectResult,
   GoogleAuthProvider,
   signOut,
-  User
+  User as FirebaseUser
 } from "firebase/auth";
 import { ref, set, get } from "firebase/database";
 import { auth, database } from "./firebase";
 import { User as AppUser, InsertUser } from "@shared/schema";
 
-export { User as FirebaseUser } from "firebase/auth";
+export type { FirebaseUser };
 
 const googleProvider = new GoogleAuthProvider();
 
