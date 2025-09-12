@@ -61,8 +61,21 @@ const Navigation: React.FC = () => {
           </div>
           
           <div className="flex items-center space-x-4">
+            {/* Mobile Welcome Message - shows only on small screens */}
+            {currentUser && userProfile && (
+              <div className="md:hidden flex items-center space-x-2 text-foreground">
+                <span className="text-sm font-medium">مرحباً</span>
+                <span className="text-sm font-semibold text-primary">{userProfile.username}</span>
+              </div>
+            )}
+
             {currentUser && userProfile ? (
               <>
+                <div className="hidden md:flex items-center space-x-2 text-foreground">
+                  <span className="text-sm font-medium">مرحباً</span>
+                  <span className="text-sm font-semibold text-primary">{userProfile.username}</span>
+                </div>
+                
                 <div className="hidden md:flex items-center space-x-3 bg-card border border-border rounded-lg px-3 py-2">
                   <i className="fas fa-wallet text-primary"></i>
                   <span className="text-sm font-medium" data-testid="wallet-balance">
