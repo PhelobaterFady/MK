@@ -7,28 +7,28 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen gaming-background gaming-pattern bg-background text-foreground">
       <Navigation />
-      <main>
+      <main className="relative">
         {children}
       </main>
-      <footer className="py-12 px-4 sm:px-6 lg:px-8 border-t border-border">
+      <footer className="py-12 px-4 sm:px-6 lg:px-8 border-t border-border bg-gradient-card">
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div>
               <div className="flex items-center space-x-2 mb-4">
-                <i className="fas fa-gamepad text-primary text-2xl"></i>
+                <i className="fas fa-gamepad text-primary text-2xl glow-cyan"></i>
                 <span className="text-xl font-bold text-foreground">Monlyking</span>
               </div>
               <p className="text-muted-foreground mb-4">The trusted marketplace for buying and selling premium gaming accounts securely.</p>
               <div className="flex space-x-3">
-                <a href="#" className="w-8 h-8 bg-primary/20 rounded-lg flex items-center justify-center hover:bg-primary/30 transition-colors">
+                <a href="#" className="w-8 h-8 bg-primary/20 rounded-lg flex items-center justify-center hover:bg-primary/30 transition-all duration-300 hover:glow-cyan">
                   <i className="fab fa-twitter text-primary"></i>
                 </a>
-                <a href="#" className="w-8 h-8 bg-primary/20 rounded-lg flex items-center justify-center hover:bg-primary/30 transition-colors">
+                <a href="#" className="w-8 h-8 bg-primary/20 rounded-lg flex items-center justify-center hover:bg-primary/30 transition-all duration-300 hover:glow-purple">
                   <i className="fab fa-discord text-primary"></i>
                 </a>
-                <a href="#" className="w-8 h-8 bg-primary/20 rounded-lg flex items-center justify-center hover:bg-primary/30 transition-colors">
+                <a href="#" className="w-8 h-8 bg-primary/20 rounded-lg flex items-center justify-center hover:bg-primary/30 transition-all duration-300 hover:glow-cyan">
                   <i className="fab fa-reddit text-primary"></i>
                 </a>
               </div>

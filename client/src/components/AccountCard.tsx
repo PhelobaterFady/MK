@@ -48,28 +48,45 @@ const AccountCard: React.FC<AccountCardProps> = ({ account, onClick }) => {
 
   return (
     <Card 
-      className="card-hover cursor-pointer overflow-hidden"
+      className="tournament-card card-hover cursor-pointer overflow-hidden glow hover:glow-cyan transition-all duration-300 transform hover:-translate-y-2"
       onClick={() => onClick(account.id)}
       data-testid={`account-card-${account.id}`}
     >
       {account.images.length > 0 && (
-        <img 
-          src={account.images[0]} 
-          alt={account.title}
-          className="w-full h-48 object-cover"
-        />
-      )}
-      
-      <CardContent className="p-6">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center space-x-2">
-            <Badge className={`text-xs font-medium ${getGameBadgeColor(account.game)}`}>
+        <div className="relative">
+          <img 
+            src={account.images[0]} 
+            alt={account.title}
+            className="w-full h-48 object-cover"
+          />
+          <div className="absolute top-3 left-3">
+            <Badge className={`text-xs font-medium ${getGameBadgeColor(account.game)} backdrop-blur-sm`}>
               {account.game.toUpperCase()}
             </Badge>
           </div>
-          <span className="text-lg font-bold text-primary" data-testid={`price-${account.id}`}>
-            ${account.price}
-          </span>
+          <div className="absolute top-3 right-3">
+            <span className="text-lg font-bold text-white bg-gradient-primary px-3 py-1 rounded-lg backdrop-blur-sm shadow-lg" data-testid={`price-${account.id}`}>
+              ${account.price}
+            </span>
+          </div>
+        </div>
+      )}
+      
+      <CardContent className="p-6 bg-gradient-card">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center space-x-2">
+            <Badge 
+              className={`text-xs font-bold px-2 py-1 rounded text-white ${getLevelBadgeColor(account.seller.level)} glow-purple`}
+              data-testid={`seller-level-${account.id}`}
+            >
+              LV {account.seller.level}
+            </Badge>
+          </div>
+          {account.images.length === 0 && (
+            <span className="text-lg font-bold text-primary" data-testid={`price-${account.id}`}>
+              ${account.price}
+            </span>
+          )}
         </div>
         
         <h3 className="font-semibold mb-2 line-clamp-2" data-testid={`title-${account.id}`}>
