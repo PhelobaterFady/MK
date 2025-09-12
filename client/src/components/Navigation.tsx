@@ -36,23 +36,27 @@ const Navigation: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center space-x-8">
-            <Link href="/" className="flex items-center space-x-2">
-              <i className="fas fa-gamepad text-primary text-2xl"></i>
-              <span className="text-xl font-bold text-foreground">Monlyking</span>
+            <Link href="/" className="flex items-center space-x-2 group">
+              <i className="fas fa-gamepad text-primary text-2xl group-hover:text-accent transition-colors glow-cyan"></i>
+              <span className="text-xl font-bold text-foreground group-hover:text-primary transition-colors">Monlyking</span>
             </Link>
             <div className="hidden md:flex space-x-6">
-              <Link href="/marketplace" className={`text-muted-foreground hover:text-primary transition-colors ${location === '/marketplace' ? 'text-primary' : ''}`}>
+              <Link href="/marketplace" className={`relative text-muted-foreground hover:text-primary transition-all duration-300 px-3 py-2 rounded-lg hover:bg-secondary/20 ${location === '/marketplace' ? 'text-primary bg-secondary/30' : ''}`}>
+                <i className="fas fa-store mr-2"></i>
                 Marketplace
               </Link>
               {currentUser && (
                 <>
-                  <Link href="/wallet" className={`text-muted-foreground hover:text-primary transition-colors ${location === '/wallet' ? 'text-primary' : ''}`}>
+                  <Link href="/wallet" className={`relative text-muted-foreground hover:text-primary transition-all duration-300 px-3 py-2 rounded-lg hover:bg-secondary/20 ${location === '/wallet' ? 'text-primary bg-secondary/30' : ''}`}>
+                    <i className="fas fa-wallet mr-2"></i>
                     Wallet
                   </Link>
-                  <Link href="/dashboard" className={`text-muted-foreground hover:text-primary transition-colors ${location === '/dashboard' ? 'text-primary' : ''}`}>
+                  <Link href="/dashboard" className={`relative text-muted-foreground hover:text-primary transition-all duration-300 px-3 py-2 rounded-lg hover:bg-secondary/20 ${location === '/dashboard' ? 'text-primary bg-secondary/30' : ''}`}>
+                    <i className="fas fa-chart-line mr-2"></i>
                     Orders
                   </Link>
-                  <Link href="/support" className={`text-muted-foreground hover:text-primary transition-colors ${location === '/support' ? 'text-primary' : ''}`}>
+                  <Link href="/support" className={`relative text-muted-foreground hover:text-primary transition-all duration-300 px-3 py-2 rounded-lg hover:bg-secondary/20 ${location === '/support' ? 'text-primary bg-secondary/30' : ''}`}>
+                    <i className="fas fa-headset mr-2"></i>
                     Support
                   </Link>
                 </>
@@ -63,22 +67,22 @@ const Navigation: React.FC = () => {
           <div className="flex items-center space-x-4">
             {/* Mobile Welcome Message - shows only on small screens */}
             {currentUser && userProfile && (
-              <div className="md:hidden flex items-center space-x-2 text-foreground">
+              <div className="md:hidden flex items-center space-x-2 text-foreground bg-gradient-card px-3 py-1 rounded-lg border border-primary/20">
                 <span className="text-sm font-medium">مرحباً</span>
-                <span className="text-sm font-semibold text-primary">{userProfile.username}</span>
+                <span className="text-sm font-semibold text-primary glow-cyan">{userProfile.username}</span>
               </div>
             )}
 
             {currentUser && userProfile ? (
               <>
-                <div className="hidden md:flex items-center space-x-2 text-foreground">
+                <div className="hidden md:flex items-center space-x-2 text-foreground bg-gradient-card px-4 py-2 rounded-lg border border-primary/20 glow">
                   <span className="text-sm font-medium">مرحباً</span>
                   <span className="text-sm font-semibold text-primary">{userProfile.username}</span>
                 </div>
                 
-                <div className="hidden md:flex items-center space-x-3 bg-card border border-border rounded-lg px-3 py-2">
-                  <i className="fas fa-wallet text-primary"></i>
-                  <span className="text-sm font-medium" data-testid="wallet-balance">
+                <div className="hidden md:flex items-center space-x-3 bg-gradient-card border border-primary/30 rounded-lg px-4 py-2 glow-purple">
+                  <i className="fas fa-wallet text-accent pulse-glow"></i>
+                  <span className="text-sm font-medium text-accent" data-testid="wallet-balance">
                     ${userProfile.walletBalance.toFixed(2)}
                   </span>
                 </div>
