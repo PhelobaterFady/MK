@@ -6,38 +6,38 @@
 @tailwind utilities;
 
 :root {
-  --background: hsl(222, 84%, 5%);
+  --background: hsl(220, 90%, 3%);
   --foreground: hsl(210, 40%, 98%);
-  --card: hsl(222, 84%, 8%);
+  --card: hsl(220, 85%, 6%);
   --card-foreground: hsl(210, 40%, 98%);
-  --popover: hsl(222, 84%, 8%);
+  --popover: hsl(220, 85%, 6%);
   --popover-foreground: hsl(210, 40%, 98%);
-  --primary: hsl(217, 91%, 60%);
-  --primary-foreground: hsl(222, 84%, 5%);
-  --secondary: hsl(217, 32%, 17%);
+  --primary: hsl(194, 100%, 50%);
+  --primary-foreground: hsl(220, 90%, 3%);
+  --secondary: hsl(240, 45%, 15%);
   --secondary-foreground: hsl(210, 40%, 98%);
-  --muted: hsl(217, 32%, 17%);
+  --muted: hsl(240, 45%, 12%);
   --muted-foreground: hsl(215, 20%, 65%);
-  --accent: hsl(217, 32%, 17%);
+  --accent: hsl(285, 85%, 60%);
   --accent-foreground: hsl(210, 40%, 98%);
   --destructive: hsl(0, 84%, 60%);
   --destructive-foreground: hsl(210, 40%, 98%);
-  --border: hsl(217, 32%, 17%);
-  --input: hsl(217, 32%, 17%);
-  --ring: hsl(217, 91%, 60%);
-  --chart-1: hsl(217, 91%, 60%);
+  --border: hsl(240, 45%, 15%);
+  --input: hsl(240, 45%, 12%);
+  --ring: hsl(194, 100%, 50%);
+  --chart-1: hsl(194, 100%, 50%);
   --chart-2: hsl(159, 78%, 36%);
   --chart-3: hsl(42, 93%, 56%);
-  --chart-4: hsl(147, 79%, 42%);
+  --chart-4: hsl(285, 85%, 60%);
   --chart-5: hsl(341, 75%, 51%);
-  --sidebar: hsl(222, 84%, 8%);
+  --sidebar: hsl(220, 85%, 6%);
   --sidebar-foreground: hsl(210, 40%, 98%);
-  --sidebar-primary: hsl(217, 91%, 60%);
-  --sidebar-primary-foreground: hsl(222, 84%, 5%);
-  --sidebar-accent: hsl(217, 32%, 17%);
+  --sidebar-primary: hsl(194, 100%, 50%);
+  --sidebar-primary-foreground: hsl(220, 90%, 3%);
+  --sidebar-accent: hsl(240, 45%, 15%);
   --sidebar-accent-foreground: hsl(210, 40%, 98%);
-  --sidebar-border: hsl(217, 32%, 17%);
-  --sidebar-ring: hsl(217, 91%, 60%);
+  --sidebar-border: hsl(240, 45%, 15%);
+  --sidebar-ring: hsl(194, 100%, 50%);
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-serif: Georgia, serif;
   --font-mono: Menlo, monospace;
@@ -105,11 +105,27 @@
 
 /* Custom Gaming Theme Styles */
 .gradient-primary {
-  background: linear-gradient(135deg, hsl(217, 91%, 60%) 0%, hsl(261, 91%, 60%) 100%);
+  background: linear-gradient(135deg, hsl(194, 100%, 50%) 0%, hsl(285, 85%, 60%) 100%);
+}
+
+.gradient-secondary {
+  background: linear-gradient(135deg, hsl(240, 45%, 15%) 0%, hsl(240, 45%, 20%) 100%);
+}
+
+.gradient-card {
+  background: linear-gradient(145deg, hsl(220, 85%, 6%) 0%, hsl(240, 45%, 8%) 100%);
 }
 
 .glow {
-  box-shadow: 0 0 20px hsl(217, 91%, 60% / 0.3);
+  box-shadow: 0 0 20px hsl(194, 100%, 50% / 0.3);
+}
+
+.glow-cyan {
+  box-shadow: 0 0 25px hsl(194, 100%, 50% / 0.5), 0 0 50px hsl(194, 100%, 50% / 0.2);
+}
+
+.glow-purple {
+  box-shadow: 0 0 25px hsl(285, 85%, 60% / 0.5), 0 0 50px hsl(285, 85%, 60% / 0.2);
 }
 
 .card-hover {
@@ -122,8 +138,26 @@
 }
 
 .game-card {
-  background: linear-gradient(145deg, var(--card), hsl(222, 84%, 10%));
-  border: 1px solid var(--border);
+  background: linear-gradient(145deg, var(--card), hsl(220, 85%, 8%));
+  border: 1px solid hsl(240, 45%, 20%);
+  backdrop-filter: blur(10px);
+}
+
+.tournament-card {
+  background: linear-gradient(135deg, hsl(220, 85%, 6%) 0%, hsl(240, 45%, 8%) 100%);
+  border: 1px solid hsl(194, 100%, 50% / 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.tournament-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, hsl(194, 100%, 50%), hsl(285, 85%, 60%));
 }
 
 .level-badge {
@@ -131,18 +165,62 @@
 }
 
 .navbar-blur {
-  backdrop-filter: blur(10px);
-  background: hsl(222, 84%, 5% / 0.8);
+  backdrop-filter: blur(15px);
+  background: hsl(220, 90%, 3% / 0.9);
+  border-bottom: 1px solid hsl(194, 100%, 50% / 0.1);
+}
+
+.gaming-background {
+  background: radial-gradient(ellipse at top, hsl(220, 90%, 8%) 0%, hsl(220, 90%, 3%) 100%);
+}
+
+.gaming-pattern {
+  background-image: 
+    radial-gradient(circle at 25% 25%, hsl(194, 100%, 50% / 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 75% 75%, hsl(285, 85%, 60% / 0.05) 0%, transparent 50%);
 }
 
 /* Gaming specific animations */
 @keyframes pulse-glow {
   0%, 100% {
-    box-shadow: 0 0 20px hsl(217, 91%, 60% / 0.3);
+    box-shadow: 0 0 20px hsl(194, 100%, 50% / 0.3);
   }
   50% {
-    box-shadow: 0 0 30px hsl(217, 91%, 60% / 0.5);
+    box-shadow: 0 0 30px hsl(194, 100%, 50% / 0.6);
   }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+.float-animation {
+  animation: float 3s ease-in-out infinite;
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    hsl(194, 100%, 50% / 0.4),
+    transparent
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
 }
 
 .pulse-glow {
@@ -159,12 +237,12 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--primary);
+  background: linear-gradient(180deg, hsl(194, 100%, 50%), hsl(285, 85%, 60%));
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(217, 91%, 50%);
+  background: linear-gradient(180deg, hsl(194, 100%, 60%), hsl(285, 85%, 70%));
 }
 
 /* Line clamp utility */
