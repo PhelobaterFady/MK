@@ -1,0 +1,96 @@
+Build me a full-stack web application for selling and buying game accounts.  
+Use **React (with TailwindCSS for UI)** for the frontend and **Firebase** for backend services:
+- Firebase Authentication (Email/Password + Google OAuth).
+- Firebase Realtime Database (for all app data).
+- Firebase Cloud Functions (for backend logic like payments, approvals, and email sending).
+- Firebase Storage (for account images/screenshots).
+
+---
+
+### Features:
+
+#### 1. Authentication & User Profiles
+- Login/Register with Email/Password or Google OAuth.
+- User profiles stored in Realtime Database:
+  - username, email, joinDate
+  - role: Normal / VIP
+  - walletBalance
+  - level
+  - badges (time-based, like Discord)
+- Prevent users from sending phone numbers/social media in chat (regex filter).
+
+#### 2. Level System
+- Every new user starts at Level 1.
+- Requirements:
+  - Level 2 → 500 total trades (buy + sell)
+  - Level 3 → 1000 total
+  - Level 4 → 1500 total
+  - Each next level adds +500 more.
+- Update level automatically based on completed transactions.
+
+#### 3. Wallet System (Top-up & Withdraw)
+- **Top-up**:
+  - User fills a form with: wallet/account name, amount paid, amount credited.
+  - Apply 5% fee:
+    - If user pays 1050 → credit = 1000
+    - If user wants 1000 credit → must pay 1050
+  - Request saved in Realtime DB under `/walletRequests`.
+  - Admin dashboard: approve/reject → on approval, balance added to user wallet.
+- **Withdraw**:
+  - User requests withdrawal → 5% fee deducted.
+  - Request saved in `/withdrawRequests`.
+  - Admin marks completed when processed.
+
+#### 4. Marketplace
+- Support 5 main games:
+  - FIFA, Valorant, League of Legends, PUBG, Call of Duty
+- Each game has a different form (fields per game).
+- Listings stored in `/marketplace/{game}/{listingId}`.
+- Buyer purchases account using wallet.
+- Payment flow:
+  - Buyer pays → amount held in escrow `/escrow`.
+  - Seller credited only after buyer confirms delivery.
+
+#### 5. Chat System
+- Each order has a chat between buyer and seller (`/chats/{orderId}`).
+- Admin has access to all chats.
+- Regex filter blocks contact info sharing.
+
+#### 6. Support Tickets
+- User submits support ticket (title, description).
+- Ticket stored in `/tickets`.
+- Confirmation email sent to user using Firebase Functions + Gmail.
+- Admin sees all tickets and replies from dashboard → reply emailed to user.
+
+#### 7. Badges & Roles
+- **Badges** based on account age:
+  - e.g. 1 month old, 6 months old, 1 year old.
+- **Roles**:
+  - Normal user
+  - VIP user (extra perks in future)
+
+#### 8. Filters & Search
+- Filter accounts by:
+  - price range (slider)
+  - rating
+  - game-specific attributes
+- Sort marketplace by:
+  - price (low → high, high → low)
+  - newest
+  - popularity
+
+---
+
+### Admin Dashboard
+- Manage users (Normal / VIP).
+- Approve/reject wallet top-ups and withdrawals.
+- Review support tickets and reply.
+- Access all order chats.
+- Manage game listings.
+
+---
+
+### Notes:
+- All dynamic data stored in Firebase Realtime Database (not Firestore).
+- Use Firebase Security Rules to protect read/write operations.
+- UI should be responsive with TailwindCSS.
