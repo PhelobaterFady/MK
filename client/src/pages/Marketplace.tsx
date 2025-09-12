@@ -66,7 +66,7 @@ const Marketplace: React.FC = () => {
   const [accounts, setAccounts] = useState(MOCK_ACCOUNTS);
   const [filteredAccounts, setFilteredAccounts] = useState(MOCK_ACCOUNTS);
   const [filters, setFilters] = useState({
-    game: '',
+    game: 'all',
     priceMin: '',
     priceMax: '',
     minRating: 1,
@@ -89,7 +89,7 @@ const Marketplace: React.FC = () => {
     let filtered = [...accounts];
 
     // Game filter
-    if (filters.game) {
+    if (filters.game && filters.game !== 'all') {
       filtered = filtered.filter(account => account.game === filters.game);
     }
 
@@ -160,7 +160,7 @@ const Marketplace: React.FC = () => {
                       <SelectValue placeholder="All Games" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All Games</SelectItem>
+                      <SelectItem value="all">All Games</SelectItem>
                       <SelectItem value="fifa">FIFA 24</SelectItem>
                       <SelectItem value="valorant">Valorant</SelectItem>
                       <SelectItem value="lol">League of Legends</SelectItem>
