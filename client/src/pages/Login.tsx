@@ -93,14 +93,12 @@ const Login: React.FC = () => {
     setError('');
     
     try {
-      const user = await loginWithGoogle();
-      if (user) {
-        toast({
-          title: "Success",
-          description: "Successfully logged in with Google!"
-        });
-        navigate('/');
-      }
+      await loginWithGoogle();
+      toast({
+        title: "Success",
+        description: "Successfully logged in with Google!"
+      });
+      navigate('/');
     } catch (error: any) {
       setError(error.message);
     } finally {
