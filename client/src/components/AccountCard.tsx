@@ -1,7 +1,9 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { GameAccount } from '@shared/schema';
+import { formatCurrencySymbol } from '@/utils/currency';
 
 interface AccountCardProps {
   account: GameAccount & {
@@ -12,16 +14,13 @@ interface AccountCardProps {
     };
   };
   onClick: (accountId: string) => void;
+  onContactSeller?: (sellerId: string, accountId: string) => void;
 }
 
-const AccountCard: React.FC<AccountCardProps> = ({ account, onClick }) => {
+const AccountCard: React.FC<AccountCardProps> = ({ account, onClick, onContactSeller }) => {
   const getGameBadgeColor = (game: string) => {
     switch (game) {
-      case 'fifa': return 'bg-green-500/20 text-green-400';
-      case 'valorant': return 'bg-red-500/20 text-red-400';
-      case 'lol': return 'bg-blue-500/20 text-blue-400';
-      case 'pubg': return 'bg-yellow-500/20 text-yellow-400';
-      case 'cod': return 'bg-orange-500/20 text-orange-400';
+      case 'fc26': return 'bg-green-500/20 text-green-400';
       default: return 'bg-gray-500/20 text-gray-400';
     }
   };
@@ -48,7 +47,7 @@ const AccountCard: React.FC<AccountCardProps> = ({ account, onClick }) => {
 
   return (
     <Card 
-      className="tournament-card card-hover cursor-pointer overflow-hidden glow hover:glow-cyan transition-all duration-300 transform hover:-translate-y-2"
+      className="tournament-card card-hover cursor-pointer overflow-hidden glow hover:glow-cyan transition-all duration-300 transform hover:-translate-y-2 bg-gradient-to-br from-slate-800/50 to-slate-900/50 border-slate-700/50 w-full max-w-sm"
       onClick={() => onClick(account.id)}
       data-testid={`account-card-${account.id}`}
     >
@@ -59,73 +58,78 @@ const AccountCard: React.FC<AccountCardProps> = ({ account, onClick }) => {
             alt={account.title}
             className="w-full h-48 object-cover"
           />
-          <div className="absolute top-3 left-3">
-            <Badge className={`text-xs font-medium ${getGameBadgeColor(account.game)} backdrop-blur-sm`}>
-              {account.game.toUpperCase()}
-            </Badge>
-          </div>
           <div className="absolute top-3 right-3">
-            <span className="text-lg font-bold text-white bg-gradient-primary px-3 py-1 rounded-lg backdrop-blur-sm shadow-lg" data-testid={`price-${account.id}`}>
-              ${account.price}
+            <span className="text-lg font-bold text-white bg-gradient-to-r from-blue-600 to-blue-700 px-3 py-1 rounded-lg backdrop-blur-sm shadow-lg" data-testid={`price-${account.id}`}>
+              {formatCurrencySymbol(account.price)}
             </span>
           </div>
         </div>
       )}
       
-      <CardContent className="p-6 bg-gradient-card">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center space-x-2">
-            <Badge 
-              className={`text-xs font-bold px-2 py-1 rounded text-white ${getLevelBadgeColor(account.seller.level)} glow-purple`}
-              data-testid={`seller-level-${account.id}`}
-            >
-              LV {account.seller.level}
-            </Badge>
-          </div>
-          {account.images.length === 0 && (
-            <span className="text-lg font-bold text-primary" data-testid={`price-${account.id}`}>
-              ${account.price}
+      <CardContent className="p-6">
+        {account.images.length === 0 && (
+          <div className="text-center mb-4">
+            <span className="text-xl font-bold text-blue-400" data-testid={`price-${account.id}`}>
+              {formatCurrencySymbol(account.price)}
             </span>
-          )}
-        </div>
+          </div>
+        )}
         
-        <h3 className="font-semibold mb-2 line-clamp-2" data-testid={`title-${account.id}`}>
+        <h3 className="font-semibold text-white mb-4 text-xl text-center" data-testid={`title-${account.id}`}>
           {account.title}
         </h3>
         
-        <div className="grid grid-cols-2 gap-2 text-sm mb-4">
-          {Object.entries(account.gameSpecificData).slice(0, 4).map(([key, value]) => (
-            <div key={key} className="flex justify-between">
-              <span className="text-muted-foreground capitalize">{key}:</span>
-              <span>{String(value)}</span>
+        <div className="grid grid-cols-2 gap-3 text-sm mb-6">
+          {account.gameSpecificData && Object.entries(account.gameSpecificData).slice(0, 4).map(([key, value]) => (
+            <div key={key} className="flex justify-between bg-slate-700/30 rounded-lg px-3 py-2">
+              <span className="text-slate-400 capitalize">{key}:</span>
+              <span className="text-white font-medium">{String(value)}</span>
             </div>
           ))}
         </div>
         
-        <div className="flex items-center justify-between pt-4 border-t border-border">
-          <div className="flex items-center space-x-2">
-            <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
-              <span className="text-xs text-primary-foreground">
-                {account.seller.username[0].toUpperCase()}
-              </span>
-            </div>
-            <div>
-              <p className="text-sm font-medium" data-testid={`seller-${account.id}`}>
-                {account.seller.username}
-              </p>
-              <div className="flex items-center space-x-1">
-                <div className="flex">
-                  {renderStars(account.seller.rating)}
-                </div>
-                <span className="text-xs text-muted-foreground">
-                  ({account.seller.rating.toFixed(1)})
+        <div className="space-y-4">
+          <div className="flex items-center justify-center pt-4 border-t border-slate-700/50">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
+                <span className="text-sm text-white font-bold">
+                  {account.seller.username[0].toUpperCase()}
                 </span>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-white" data-testid={`seller-${account.id}`}>
+                  {account.seller.username}
+                </p>
+                <div className="flex items-center space-x-1">
+                  <div className="flex">
+                    {renderStars(account.seller.rating)}
+                  </div>
+                  <span className="text-xs text-slate-400">
+                    ({account.seller.rating.toFixed(1)})
+                  </span>
+                </div>
               </div>
             </div>
           </div>
-          <Badge className={`text-xs font-bold px-2 py-1 rounded text-white ${getLevelBadgeColor(account.seller.level)}`}>
-            LV {account.seller.level}
-          </Badge>
+          
+          {/* Views Count */}
+          <div className="flex items-center justify-center space-x-2 text-sm text-slate-400">
+            <i className="fas fa-eye"></i>
+            <span>{account.views || 0} views</span>
+          </div>
+          
+          <div className="flex justify-center">
+            <Button 
+              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium py-2.5"
+              onClick={(e) => {
+                e.stopPropagation();
+                onClick(account.id);
+              }}
+            >
+              <i className="fas fa-shopping-cart mr-2"></i>
+              Buy Now
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

@@ -16,8 +16,12 @@ import Wallet from "@/pages/Wallet";
 import Support from "@/pages/Support";
 import Chat from "@/pages/Chat";
 import Admin from "@/pages/Admin";
+import AdminDashboard from "@/pages/AdminDashboard";
 import AccountDetails from "@/pages/AccountDetails";
 import SellAccount from "@/pages/SellAccount";
+import SellingDashboard from "@/pages/SellingDashboard";
+import ProductChat from "@/pages/ProductChat";
+import UserProfile from "@/pages/UserProfile";
 
 function Router() {
   return (
@@ -26,6 +30,8 @@ function Router() {
       <Route path="/login" component={Login} />
       <Route path="/marketplace" component={Marketplace} />
       <Route path="/account/:id" component={AccountDetails} />
+      <Route path="/chat/:accountId" component={ProductChat} />
+      <Route path="/profile/:userId" component={UserProfile} />
       
       {/* Protected Routes */}
       <Route path="/dashboard">
@@ -46,7 +52,7 @@ function Router() {
         </ProtectedRoute>
       </Route>
       
-      <Route path="/chat/:orderId?">
+      <Route path="/chat">
         <ProtectedRoute>
           <Chat />
         </ProtectedRoute>
@@ -58,10 +64,22 @@ function Router() {
         </ProtectedRoute>
       </Route>
       
+      <Route path="/selling-dashboard">
+        <ProtectedRoute>
+          <SellingDashboard />
+        </ProtectedRoute>
+      </Route>
+      
       {/* Admin Only Routes */}
       <Route path="/admin">
         <ProtectedRoute adminOnly>
           <Admin />
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/admin-dashboard">
+        <ProtectedRoute adminOnly>
+          <AdminDashboard />
         </ProtectedRoute>
       </Route>
       

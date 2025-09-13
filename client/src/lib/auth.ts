@@ -1,10 +1,10 @@
 import { 
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  signInWithRedirect,
-  getRedirectResult,
+  signInWithPopup,
   GoogleAuthProvider,
   signOut,
+  sendPasswordResetEmail,
   User as FirebaseUser
 } from "firebase/auth";
 import { ref, set, get } from "firebase/database";
@@ -14,6 +14,11 @@ import { User as AppUser, InsertUser } from "@shared/schema";
 export type { FirebaseUser };
 
 const googleProvider = new GoogleAuthProvider();
+googleProvider.addScope('email');
+googleProvider.addScope('profile');
+googleProvider.setCustomParameters({
+  client_id: '437375224153-fb9qaraofmij9aju0lapo72g9ektll90.apps.googleusercontent.com'
+});
 
 export const loginWithEmail = async (email: string, password: string) => {
   try {
@@ -43,7 +48,9 @@ export const registerWithEmail = async (email: string, password: string, usernam
       displayName: username,
       role: "user",
       level: 1,
+      accountLevel: 1,
       totalTrades: 0,
+      totalTransactionValue: 0,
       walletBalance: 0,
       rating: 0,
       reviewCount: 0,
@@ -65,56 +72,57 @@ export const registerWithEmail = async (email: string, password: string, usernam
 
 export const loginWithGoogle = async () => {
   try {
-    await signInWithRedirect(auth, googleProvider);
+    const result = await signInWithPopup(auth, googleProvider);
+    
+    // Check if user profile exists, create if not
+    const userRef = ref(database, `users/${result.user.uid}`);
+    const userSnapshot = await get(userRef);
+    
+    if (!userSnapshot.exists()) {
+      const username = result.user.email?.split('@')[0] || `user_${Date.now()}`;
+      
+      const userData: InsertUser = {
+        email: result.user.email!,
+        username,
+        displayName: result.user.displayName || username,
+        photoURL: result.user.photoURL || undefined,
+        role: "user",
+        level: 1,
+        accountLevel: 1,
+        totalTrades: 0,
+        totalTransactionValue: 0,
+        walletBalance: 0,
+        rating: 0,
+        reviewCount: 0,
+        badges: [],
+        joinDate: new Date(),
+        isVerified: true, // Google accounts are pre-verified
+        isBanned: false
+      };
+
+      const { createUser } = await import('../services/firebase-api');
+      await createUser(result.user.uid, userData);
+    }
+    
+    return result.user;
   } catch (error: any) {
     console.error("Google Sign-In Error:", error);
     throw new Error(error.message);
   }
 };
 
-export const handleRedirectResult = async () => {
-  try {
-    const result = await getRedirectResult(auth);
-    if (result?.user) {
-      // Check if user profile exists, create if not
-      const userRef = ref(database, `users/${result.user.uid}`);
-      const userSnapshot = await get(userRef);
-      
-      if (!userSnapshot.exists()) {
-        const username = result.user.email?.split('@')[0] || `user_${Date.now()}`;
-        
-        const userData: InsertUser = {
-          email: result.user.email!,
-          username,
-          displayName: result.user.displayName || username,
-          photoURL: result.user.photoURL || undefined,
-          role: "user",
-          level: 1,
-          totalTrades: 0,
-          walletBalance: 0,
-          rating: 0,
-          reviewCount: 0,
-          badges: [],
-          joinDate: new Date(),
-          isVerified: true, // Google accounts are pre-verified
-          isBanned: false
-        };
 
-        const { createUser } = await import('../services/firebase-api');
-        await createUser(result.user.uid, userData);
-      }
-      
-      return result.user;
-    }
-    return null;
+export const logout = async () => {
+  try {
+    await signOut(auth);
   } catch (error: any) {
     throw new Error(error.message);
   }
 };
 
-export const logout = async () => {
+export const resetPassword = async (email: string) => {
   try {
-    await signOut(auth);
+    await sendPasswordResetEmail(auth, email);
   } catch (error: any) {
     throw new Error(error.message);
   }

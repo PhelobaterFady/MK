@@ -15,7 +15,10 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, adminOnly = f
     if (!loading) {
       if (!currentUser) {
         navigate('/login');
-      } else if (adminOnly && userProfile?.role !== 'admin') {
+      } else if (userProfile?.isDisabled) {
+        // User is disabled, redirect to login with message
+        navigate('/login?disabled=true');
+      } else if (adminOnly && currentUser.email !== 'admin@monlyking.com') {
         navigate('/');
       }
     }
@@ -29,7 +32,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, adminOnly = f
     );
   }
 
-  if (!currentUser || (adminOnly && userProfile?.role !== 'admin')) {
+  if (!currentUser || userProfile?.isDisabled || (adminOnly && currentUser.email !== 'admin@monlyking.com')) {
     return null;
   }
 

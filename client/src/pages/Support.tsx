@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,9 +9,11 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '../contexts/AuthContext';
+import { database } from '../lib/firebase';
+import { ref, push, onValue, off, get } from 'firebase/database';
 
 const Support: React.FC = () => {
-  const { userProfile } = useAuth();
+  const { currentUser, userProfile, loading } = useAuth();
   const { toast } = useToast();
   const [ticketForm, setTicketForm] = useState({
     category: '',
@@ -21,9 +23,70 @@ const Support: React.FC = () => {
     priority: 'medium'
   });
   const [submitting, setSubmitting] = useState(false);
+  const [userTickets, setUserTickets] = useState<any[]>([]);
+  const [loadingTickets, setLoadingTickets] = useState(true);
+
+  // Load user's support tickets
+  useEffect(() => {
+    if (!currentUser?.uid) {
+      setUserTickets([]);
+      setLoadingTickets(false);
+      return;
+    }
+
+    const loadUserTickets = async () => {
+      try {
+        setLoadingTickets(true);
+        const ticketsRef = ref(database, 'supportTickets');
+        const snapshot = await get(ticketsRef);
+        
+        if (!snapshot.exists()) {
+          setUserTickets([]);
+          setLoadingTickets(false);
+          return;
+        }
+
+        const ticketsData = snapshot.val();
+        const userTicketsList = Object.entries(ticketsData)
+          .filter(([_, ticket]: [string, any]) => ticket.userId === currentUser.uid)
+          .map(([id, ticket]: [string, any]) => ({
+            id,
+            ...ticket
+          }))
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+        setUserTickets(userTicketsList);
+      } catch (error) {
+        console.error('Error loading user tickets:', error);
+      } finally {
+        setLoadingTickets(false);
+      }
+    };
+
+    loadUserTickets();
+
+    // Listen for real-time updates
+    const ticketsRef = ref(database, 'supportTickets');
+    const unsubscribe = onValue(ticketsRef, () => {
+      loadUserTickets();
+    });
+
+    return () => {
+      off(ticketsRef, 'value', unsubscribe);
+    };
+  }, [currentUser?.uid]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (loading) {
+      toast({
+        title: "Please wait",
+        description: "Loading user data...",
+        variant: "destructive"
+      });
+      return;
+    }
     
     if (!ticketForm.category || !ticketForm.subject || !ticketForm.description) {
       toast({
@@ -34,11 +97,35 @@ const Support: React.FC = () => {
       return;
     }
 
+    if (!currentUser?.uid) {
+      toast({
+        title: "Error",
+        description: "Please log in to submit a support ticket.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setSubmitting(true);
     
     try {
-      // TODO: Submit to Firebase and trigger email notification
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API call
+      const supportTicket = {
+        userId: currentUser.uid,
+        subject: ticketForm.subject,
+        message: ticketForm.description,
+        category: ticketForm.category,
+        orderId: ticketForm.orderId || null,
+        priority: ticketForm.priority,
+        status: 'pending',
+        createdAt: new Date().toISOString()
+      };
+
+      console.log('Submitting support ticket:', supportTicket); // Debug log
+
+      const ticketsRef = ref(database, 'supportTickets');
+      const result = await push(ticketsRef, supportTicket);
+      
+      console.log('Support ticket saved with key:', result.key); // Debug log
       
       toast({
         title: "Success",
@@ -53,6 +140,7 @@ const Support: React.FC = () => {
         priority: 'medium'
       });
     } catch (error) {
+      console.error('Error submitting support ticket:', error);
       toast({
         title: "Error",
         description: "Failed to submit ticket. Please try again.",
@@ -67,29 +155,6 @@ const Support: React.FC = () => {
     setTicketForm(prev => ({ ...prev, [field]: value }));
   };
 
-  // Mock tickets data
-  const tickets = [
-    {
-      id: 'ST-2024-0891',
-      subject: 'Payment not credited to wallet',
-      category: 'Payment & Wallet',
-      status: 'resolved',
-      priority: 'medium',
-      date: '2024-12-14',
-      lastUpdatedBy: 'Admin Sarah',
-      preview: 'I made a payment of $500 yesterday but it hasn\'t been credited to my wallet yet. My transaction ID is...'
-    },
-    {
-      id: 'ST-2024-0887',
-      subject: 'Account verification issues',
-      category: 'Account Issues',
-      status: 'in_progress',
-      priority: 'high',
-      date: '2024-12-12',
-      lastUpdatedBy: 'You',
-      preview: 'Unable to complete account verification. The system keeps rejecting my documents even though...'
-    }
-  ];
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -110,6 +175,19 @@ const Support: React.FC = () => {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="py-16 px-4 sm:px-6 lg:px-8 bg-card/30">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <span className="ml-2">Loading...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="py-16 px-4 sm:px-6 lg:px-8 bg-card/30">
       <div className="max-w-4xl mx-auto">
@@ -118,9 +196,9 @@ const Support: React.FC = () => {
           <p className="text-muted-foreground">Get help with your account, orders, and platform issues</p>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="grid lg:grid-cols-2 gap-6">
           {/* Create Ticket Form */}
-          <div className="lg:col-span-2">
+          <div>
             <Card>
               <CardHeader>
                 <div className="flex items-center space-x-3">
@@ -240,151 +318,149 @@ const Support: React.FC = () => {
             </Card>
           </div>
 
-          {/* Quick Actions & Info */}
+          {/* My Tickets */}
           <div className="space-y-6">
-            {/* Quick Actions */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Quick Actions</CardTitle>
+            <Card className="h-fit w-full">
+              <CardHeader className="pb-4 px-6">
+                <div className="flex items-center space-x-3">
+                  <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg">
+                    <i className="fas fa-history text-white text-lg"></i>
+                  </div>
+                  <div>
+                    <CardTitle className="text-xl font-bold">My Support Tickets</CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1">{userTickets.length} ticket{userTickets.length !== 1 ? 's' : ''}</p>
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <Button
-                  variant="outline"
-                  className="w-full justify-start bg-primary/20 text-primary border-primary/30"
-                  data-testid="check-order-status-button"
-                >
-                  <i className="fas fa-search mr-2"></i>
-                  Check Order Status
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start bg-green-500/20 text-green-400 border-green-500/30"
-                  data-testid="wallet-help-button"
-                >
-                  <i className="fas fa-wallet mr-2"></i>
-                  Wallet Help
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start bg-purple-500/20 text-purple-400 border-purple-500/30"
-                  data-testid="account-recovery-button"
-                >
-                  <i className="fas fa-key mr-2"></i>
-                  Account Recovery
-                </Button>
-              </CardContent>
-            </Card>
+              <CardContent className="pt-0 px-6">
+                {loadingTickets ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
+                    <span className="ml-3 text-muted-foreground">Loading tickets...</span>
+                  </div>
+                ) : userTickets.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <div className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <i className="fas fa-ticket-alt text-2xl"></i>
+                    </div>
+                    <h3 className="font-semibold text-lg mb-2">No support tickets found</h3>
+                    <p className="text-sm">Your support tickets will appear here</p>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {userTickets.map((ticket) => (
+                      <div 
+                        key={ticket.id} 
+                        className="p-6 bg-muted/30 rounded-xl border border-border hover:bg-muted/50 transition-all duration-200 w-full"
+                        data-testid={`ticket-${ticket.id}`}
+                      >
+                        <div className="flex flex-col space-y-4 mb-6">
+                          <div className="flex items-start justify-between">
+                            <h4 className="font-bold text-xl mb-2 flex-1">{ticket.subject}</h4>
+                          </div>
+                          
+                          <div className="flex flex-wrap items-center gap-3 mb-4">
+                            <Badge className={`px-4 py-2 text-sm font-semibold rounded-full ${getStatusColor(ticket.status)}`}>
+                              {ticket.status.replace('_', ' ').split(' ').map((word: string) => 
+                                word.charAt(0).toUpperCase() + word.slice(1)
+                              ).join(' ')}
+                            </Badge>
+                            <Badge className={`px-4 py-2 text-sm font-semibold rounded-full ${getPriorityColor(ticket.priority)}`}>
+                              {ticket.priority.charAt(0).toUpperCase() + ticket.priority.slice(1)}
+                            </Badge>
+                          </div>
+                          
+                          <div className="flex flex-wrap items-center gap-6 text-sm text-muted-foreground">
+                            <span className="flex items-center space-x-2">
+                              <i className="fas fa-hashtag text-xs"></i>
+                              <span>#{ticket.id.slice(-8)}</span>
+                            </span>
+                            <span className="flex items-center space-x-2">
+                              <i className="fas fa-tag text-xs"></i>
+                              <span className="capitalize">{ticket.category}</span>
+                            </span>
+                            <span className="flex items-center space-x-2">
+                              <i className="fas fa-calendar text-xs"></i>
+                              <span>{new Date(ticket.createdAt).toLocaleDateString()}</span>
+                            </span>
+                          </div>
+                        </div>
+                      
+                        <div className="mb-6">
+                          <div className="flex items-center space-x-3 mb-4">
+                            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center shadow-md">
+                              <i className="fas fa-user text-white text-base"></i>
+                            </div>
+                            <p className="text-base font-bold text-blue-600">
+                              Your Message
+                            </p>
+                          </div>
+                          <div className="bg-gradient-to-r from-blue-50 to-blue-100 border-l-4 border-blue-500 p-6 rounded-r-xl shadow-sm">
+                            <p className="text-base text-gray-800 leading-relaxed mb-4">{ticket.message}</p>
+                            <div className="flex items-center space-x-2 pt-4 border-t border-blue-200">
+                              <i className="fas fa-clock text-blue-500 text-sm"></i>
+                              <p className="text-sm text-blue-600 font-medium">
+                                Sent on {new Date(ticket.createdAt).toLocaleDateString()} at {new Date(ticket.createdAt).toLocaleTimeString()}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
 
-            {/* Contact Info */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Contact Information</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center space-x-3">
-                  <i className="fas fa-envelope text-primary"></i>
-                  <div>
-                    <p className="font-medium">Email Support</p>
-                    <p className="text-sm text-muted-foreground">support@gamevault.com</p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <i className="fas fa-clock text-primary"></i>
-                  <div>
-                    <p className="font-medium">Response Time</p>
-                    <p className="text-sm text-muted-foreground">Within 24 hours</p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <i className="fas fa-headset text-primary"></i>
-                  <div>
-                    <p className="font-medium">Live Chat</p>
-                    <p className="text-sm text-muted-foreground">Monday - Friday, 9 AM - 6 PM</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                        {ticket.adminResponse && (
+                          <div className="mb-6">
+                            <div className="flex items-center space-x-3 mb-4">
+                              <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center shadow-md">
+                                <i className="fas fa-user-shield text-white text-base"></i>
+                              </div>
+                              <p className="text-base font-bold text-green-600">
+                                Admin Response
+                              </p>
+                            </div>
+                            <div className="bg-gradient-to-r from-green-50 to-green-100 border-l-4 border-green-500 p-6 rounded-r-xl shadow-sm">
+                              <p className="text-base text-gray-800 leading-relaxed mb-4">{ticket.adminResponse}</p>
+                              {ticket.updatedAt && (
+                                <div className="flex items-center space-x-2 pt-4 border-t border-green-200">
+                                  <i className="fas fa-clock text-green-500 text-sm"></i>
+                                  <p className="text-sm text-green-600 font-medium">
+                                    Responded on {new Date(ticket.updatedAt).toLocaleDateString()} at {new Date(ticket.updatedAt).toLocaleTimeString()}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
 
-            {/* FAQ Quick Links */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Common Questions</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <a href="#" className="block text-sm text-primary hover:text-primary/80 transition-colors">
-                  How does the escrow system work?
-                </a>
-                <a href="#" className="block text-sm text-primary hover:text-primary/80 transition-colors">
-                  How to level up my account?
-                </a>
-                <a href="#" className="block text-sm text-primary hover:text-primary/80 transition-colors">
-                  Wallet top-up fees explained
-                </a>
-                <a href="#" className="block text-sm text-primary hover:text-primary/80 transition-colors">
-                  Account safety guidelines
-                </a>
-                <a href="#" className="block text-sm text-primary hover:text-primary/80 transition-colors">
-                  How to report suspicious activity
-                </a>
-              </CardContent>
+                        {ticket.orderId && (
+                          <div className="mb-6">
+                            <div className="flex items-center space-x-3 bg-purple-50 border border-purple-200 px-5 py-4 rounded-xl">
+                              <i className="fas fa-shopping-cart text-purple-500 text-base"></i>
+                              <p className="text-base text-purple-600 font-medium">
+                                Related Order: <span className="font-mono bg-purple-100 px-3 py-1 rounded text-sm ml-2">{ticket.orderId}</span>
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-between pt-6 border-t border-border">
+                          <span className="text-sm text-muted-foreground">
+                            Created {new Date(ticket.createdAt).toLocaleString()}
+                          </span>
+                          {ticket.adminNotes && (
+                            <div className="flex items-center space-x-2 bg-orange-50 border border-orange-200 px-4 py-2 rounded-full">
+                              <i className="fas fa-sticky-note text-orange-500 text-sm"></i>
+                              <span className="text-sm text-orange-600 font-medium">
+                                Admin Notes Available
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
             </Card>
           </div>
-        </div>
-
-        {/* My Tickets */}
-        <div className="mt-12">
-          <Card>
-            <CardHeader>
-              <CardTitle>My Support Tickets</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="divide-y divide-border">
-                {tickets.map((ticket) => (
-                  <div 
-                    key={ticket.id} 
-                    className="py-6 hover:bg-muted/30 transition-colors"
-                    data-testid={`ticket-${ticket.id}`}
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <h4 className="font-semibold mb-1">{ticket.subject}</h4>
-                        <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                          <span>Ticket #{ticket.id}</span>
-                          <span>{ticket.category}</span>
-                          <span>{ticket.date}</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-3">
-                        <Badge className={`text-sm font-medium ${getStatusColor(ticket.status)}`}>
-                          {ticket.status.replace('_', ' ')}
-                        </Badge>
-                        <Badge className={`text-xs ${getPriorityColor(ticket.priority)}`}>
-                          {ticket.priority}
-                        </Badge>
-                      </div>
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-                      {ticket.preview}
-                    </p>
-                    <div className="flex items-center space-x-4">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        data-testid={`view-ticket-${ticket.id}`}
-                      >
-                        <i className="fas fa-eye mr-1"></i>
-                        View Details
-                      </Button>
-                      <span className="text-sm text-muted-foreground">
-                        Last updated by <strong>{ticket.lastUpdatedBy}</strong>
-                        {ticket.lastUpdatedBy === 'You' && ' • 2 hours ago'}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </div>
     </div>

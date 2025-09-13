@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,15 +8,20 @@ import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { ref, push, set } from 'firebase/database';
+import { ref, push, set, get } from 'firebase/database';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { database, storage } from '../lib/firebase';
 import { InsertGameAccount } from '@shared/schema';
 import { GAMES } from '../utils/constants';
+import { useLocation } from 'wouter';
 
 const SellAccount: React.FC = () => {
   const { currentUser, userProfile } = useAuth();
   const { toast } = useToast();
+  const [location] = useLocation();
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editAccountId, setEditAccountId] = useState<string | null>(null);
+  const [existingImages, setExistingImages] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     game: '',
     title: '',
@@ -27,6 +32,86 @@ const SellAccount: React.FC = () => {
   const [gameSpecificFields, setGameSpecificFields] = useState<Record<string, any>>({});
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+
+  // Check if we're in edit mode
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const editId = urlParams.get('edit');
+    
+    console.log('URL location:', window.location.href);
+    console.log('URL search:', window.location.search);
+    console.log('Edit ID from URL:', editId);
+    
+    if (editId) {
+      console.log('Setting edit mode for account:', editId);
+      setIsEditMode(true);
+      setEditAccountId(editId);
+      loadAccountForEdit(editId);
+    }
+  }, []);
+
+  const loadAccountForEdit = async (accountId: string) => {
+    try {
+      console.log('Loading account for edit:', accountId);
+      const accountRef = ref(database, `gameAccounts/${accountId}`);
+      const accountSnapshot = await get(accountRef);
+      
+      if (accountSnapshot.exists()) {
+        const accountData = accountSnapshot.val();
+        console.log('Account data loaded:', accountData);
+        
+        // Check if user owns this account
+        if (accountData.sellerId !== currentUser?.uid) {
+          console.log('User does not own this account');
+          toast({
+            title: "Error",
+            description: "You can only edit your own accounts.",
+            variant: "destructive"
+          });
+          window.location.href = '/selling-dashboard';
+          return;
+        }
+        
+        console.log('Populating form with account data');
+        // Populate form with existing data
+        setFormData({
+          game: accountData.game || '',
+          title: accountData.title || '',
+          description: accountData.description || '',
+          price: accountData.price?.toString() || '',
+          images: []
+        });
+        
+        // Set existing images
+        if (accountData.images && accountData.images.length > 0) {
+          console.log('Setting existing images:', accountData.images);
+          setExistingImages(accountData.images);
+        } else {
+          setExistingImages([]);
+        }
+        
+        // Set game-specific fields
+        if (accountData.gameSpecificData) {
+          console.log('Setting game-specific fields:', accountData.gameSpecificData);
+          setGameSpecificFields(accountData.gameSpecificData);
+        }
+      } else {
+        toast({
+          title: "Error",
+          description: "Account not found.",
+          variant: "destructive"
+        });
+        window.location.href = '/selling-dashboard';
+      }
+    } catch (error) {
+      console.error('Error loading account for edit:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load account data.",
+        variant: "destructive"
+      });
+    }
+  };
 
   const handleGameChange = (game: string) => {
     setFormData(prev => ({ ...prev, game }));
@@ -52,6 +137,11 @@ const SellAccount: React.FC = () => {
       ...prev,
       images: [...prev.images, ...files]
     }));
+  };
+
+  const handleDeleteExistingImage = (index: number) => {
+    const newExistingImages = existingImages.filter((_, i) => i !== index);
+    setExistingImages(newExistingImages);
   };
 
   const removeImage = (index: number) => {
@@ -453,6 +543,17 @@ const SellAccount: React.FC = () => {
       return;
     }
 
+    // Check if there's at least one image (existing or new)
+    const totalImages = existingImages.length + formData.images.length;
+    if (totalImages === 0) {
+      toast({
+        title: "Error",
+        description: "Please upload at least one image for your account.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     const price = parseFloat(formData.price);
     if (isNaN(price) || price <= 0) {
       toast({
@@ -462,6 +563,7 @@ const SellAccount: React.FC = () => {
       });
       return;
     }
+
 
     setUploading(true);
     setUploadProgress(20);
@@ -476,27 +578,91 @@ const SellAccount: React.FC = () => {
 
       setUploadProgress(80);
 
-      // Create account listing
-      const accountData: InsertGameAccount = {
-        sellerId: currentUser.uid,
-        game: formData.game as any,
-        title: formData.title,
-        description: formData.description,
-        price,
-        images: imageUrls,
-        gameSpecificData: gameSpecificFields,
-        status: 'active'
-      };
+      if (isEditMode && editAccountId) {
+        console.log('Updating account in edit mode:', editAccountId);
+        // Update existing account
+        const accountRef = ref(database, `gameAccounts/${editAccountId}`);
+        const accountSnapshot = await get(accountRef);
+        
+        if (accountSnapshot.exists()) {
+          const existingData = accountSnapshot.val();
+          console.log('Existing account data:', existingData);
+          
+          // Combine remaining existing images with new uploaded images
+          const finalImages = [...existingImages, ...imageUrls];
+          
+          const updatedAccountData = {
+            ...existingData,
+            game: formData.game,
+            title: formData.title,
+            description: formData.description,
+            price,
+            images: finalImages,
+            gameSpecificData: gameSpecificFields || {},
+            updatedAt: new Date().toISOString()
+          };
+          
+          console.log('Updated account data:', updatedAccountData);
+          await set(accountRef, updatedAccountData);
+          console.log('Account updated successfully');
+          
+          toast({
+            title: "Success",
+            description: "Account updated successfully!",
+          });
+          
+          // Redirect to selling dashboard
+          setTimeout(() => {
+            window.location.href = '/selling-dashboard';
+          }, 2000);
+        } else {
+          console.log('Account not found for update');
+        }
+      } else {
+        // Create new account listing
+        const accountData: InsertGameAccount = {
+          sellerId: currentUser.uid,
+          game: formData.game as any,
+          title: formData.title,
+          description: formData.description,
+          price,
+          images: imageUrls,
+          gameSpecificData: gameSpecificFields || {},
+          status: 'active'
+        };
 
-      const accountsRef = ref(database, 'gameAccounts');
-      const newAccountRef = push(accountsRef);
+        const accountsRef = ref(database, 'gameAccounts');
+        const newAccountRef = push(accountsRef);
+        const accountId = newAccountRef.key!;
+        
+        const accountToSave = {
+          ...accountData,
+          id: accountId,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          views: 0
+        };
       
-      await set(newAccountRef, {
-        ...accountData,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        views: 0
+      console.log('Saving account:', accountToSave);
+      console.log('Account data structure:', {
+        sellerId: accountToSave.sellerId,
+        game: accountToSave.game,
+        title: accountToSave.title,
+        price: accountToSave.price,
+        status: accountToSave.status,
+        createdAt: accountToSave.createdAt
       });
+      
+      await set(newAccountRef, accountToSave);
+      console.log('Account saved successfully with ID:', accountId);
+      
+      // Verify the save by reading it back
+      const verifyRef = ref(database, `gameAccounts/${accountId}`);
+      const verifySnapshot = await get(verifyRef);
+      console.log('Verification - Account exists in Firebase:', verifySnapshot.exists());
+      if (verifySnapshot.exists()) {
+        console.log('Verification - Account data:', verifySnapshot.val());
+      }
 
       setUploadProgress(100);
 
@@ -519,12 +685,13 @@ const SellAccount: React.FC = () => {
       setTimeout(() => {
         window.location.href = '/marketplace';
       }, 2000);
+      }
 
     } catch (error) {
       console.error('Error creating listing:', error);
       toast({
         title: "Error",
-        description: "Failed to create listing. Please try again.",
+        description: `Failed to create listing: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`,
         variant: "destructive"
       });
     } finally {
@@ -551,9 +718,14 @@ const SellAccount: React.FC = () => {
     <div className="py-16 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
         <div className="mb-8">
-          <h2 className="text-3xl font-bold mb-2">Sell Your Game Account</h2>
+          <h2 className="text-3xl font-bold mb-2">
+            {isEditMode ? 'Edit Your Game Account' : 'Sell Your Game Account'}
+          </h2>
           <p className="text-muted-foreground">
-            List your gaming account for sale on our secure marketplace
+            {isEditMode 
+              ? 'Update your gaming account listing on our secure marketplace'
+              : 'List your gaming account for sale on our secure marketplace'
+            }
           </p>
         </div>
 
@@ -591,7 +763,7 @@ const SellAccount: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="price">Price (USD) *</Label>
+                  <Label htmlFor="price">Price (EGP) *</Label>
                   <Input
                     id="price"
                     type="number"
@@ -636,6 +808,38 @@ const SellAccount: React.FC = () => {
               <div>
                 <Label htmlFor="images">Account Screenshots (up to 5 images)</Label>
                 <div className="space-y-4">
+                  
+                  {/* Existing Images (Edit Mode) */}
+                  {isEditMode && existingImages.length > 0 && (
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-2">Current Images:</p>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        {existingImages.map((imageUrl, index) => (
+                          <div key={index} className="relative">
+                            <img
+                              src={imageUrl}
+                              alt={`Current Screenshot ${index + 1}`}
+                              className="w-full h-32 object-cover rounded-lg"
+                            />
+                            <div className="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded">
+                              Current
+                            </div>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              className="absolute top-2 right-2 w-6 h-6 p-0"
+                              onClick={() => handleDeleteExistingImage(index)}
+                            >
+                              <i className="fas fa-times text-xs"></i>
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Click the ❌ button to delete images, or upload new images below. You must have at least one image.
+                      </p>
+                    </div>
+                  )}
                   <Input
                     id="images"
                     type="file"
@@ -706,12 +910,12 @@ const SellAccount: React.FC = () => {
                   {uploading ? (
                     <>
                       <i className="fas fa-spinner fa-spin mr-2"></i>
-                      Creating Listing...
+                      {isEditMode ? 'Updating Listing...' : 'Creating Listing...'}
                     </>
                   ) : (
                     <>
-                      <i className="fas fa-plus mr-2"></i>
-                      Create Listing
+                      <i className={`fas ${isEditMode ? 'fa-save' : 'fa-plus'} mr-2`}></i>
+                      {isEditMode ? 'Update Listing' : 'Create Listing'}
                     </>
                   )}
                 </Button>

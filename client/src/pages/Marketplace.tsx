@@ -9,6 +9,9 @@ import { Slider } from '@/components/ui/slider';
 import AccountCard from '../components/AccountCard';
 import { GameAccount, User } from '@shared/schema';
 import { getGameAccounts, getGameAccountsByGame, getUser } from '../services/firebase-api';
+import { useAuth } from '../hooks/useAuth';
+import { database } from '../lib/firebase';
+import { ref, get, update } from 'firebase/database';
 
 // Type for account with seller info
 type AccountWithSeller = GameAccount & { 
@@ -21,6 +24,7 @@ type AccountWithSeller = GameAccount & {
 
 const Marketplace: React.FC = () => {
   const [location] = useLocation();
+  const { currentUser } = useAuth();
   const [accounts, setAccounts] = useState<AccountWithSeller[]>([]);
   const [filteredAccounts, setFilteredAccounts] = useState<AccountWithSeller[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,35 +32,55 @@ const Marketplace: React.FC = () => {
     game: 'all',
     priceMin: '',
     priceMax: '',
-    minRating: 1,
     sortBy: 'newest'
   });
   const [currentPage, setCurrentPage] = useState(1);
   const accountsPerPage = 9;
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Load accounts from Firebase
   useEffect(() => {
     const loadAccounts = async () => {
       try {
         setLoading(true);
+        console.log('Loading accounts from Firebase...');
         const gameAccounts = await getGameAccounts();
+        console.log('Retrieved accounts:', gameAccounts.length);
+        
+        // Filter only active accounts
+        const activeAccounts = gameAccounts.filter(account => account.status === 'active');
+        console.log('Active accounts:', activeAccounts.length);
         
         // Get seller info for each account
         const accountsWithSellers = await Promise.all(
-          gameAccounts.map(async (account) => {
-            const seller = await getUser(account.sellerId);
-            return {
-              ...account,
-              seller: {
-                username: seller?.username || 'Unknown',
-                level: seller?.level || 1,
-                rating: seller?.rating || 0
-              }
-            };
+          activeAccounts.map(async (account) => {
+            try {
+              const seller = await getUser(account.sellerId);
+              return {
+                ...account,
+                seller: {
+                  username: seller?.username || 'Unknown',
+                  level: seller?.level || 1,
+                  rating: seller?.rating || 0
+                }
+              };
+            } catch (error) {
+              console.error('Error loading seller for account:', account.id, error);
+              return {
+                ...account,
+                seller: {
+                  username: 'Unknown',
+                  level: 1,
+                  rating: 0
+                }
+              };
+            }
           })
         );
         
+        console.log('Final accounts with sellers:', accountsWithSellers.length);
         setAccounts(accountsWithSellers);
+        setFilteredAccounts(accountsWithSellers);
       } catch (error) {
         console.error('Error loading accounts:', error);
       } finally {
@@ -65,7 +89,22 @@ const Marketplace: React.FC = () => {
     };
     
     loadAccounts();
-  }, []);
+  }, [refreshKey]);
+
+  const handleRefresh = () => {
+    console.log('Manual refresh triggered');
+    setRefreshKey(prev => prev + 1);
+  };
+
+  const resetFilters = () => {
+    console.log('Resetting filters to default');
+    setFilters({
+      game: 'all',
+      priceMin: '',
+      priceMax: '',
+      sortBy: 'newest'
+    });
+  };
 
   // Get game filter from URL
   useEffect(() => {
@@ -78,23 +117,29 @@ const Marketplace: React.FC = () => {
 
   // Apply filters
   useEffect(() => {
+    console.log('Applying filters...');
+    console.log('Original accounts:', accounts.length);
+    console.log('Current filters:', filters);
+    
     let filtered = [...accounts];
+    console.log('Starting with accounts:', filtered.length);
 
     // Game filter
     if (filters.game && filters.game !== 'all') {
       filtered = filtered.filter(account => account.game === filters.game);
+      console.log('After game filter:', filtered.length);
     }
 
     // Price range filter
     if (filters.priceMin) {
       filtered = filtered.filter(account => account.price >= parseFloat(filters.priceMin));
+      console.log('After price min filter:', filtered.length);
     }
     if (filters.priceMax) {
       filtered = filtered.filter(account => account.price <= parseFloat(filters.priceMax));
+      console.log('After price max filter:', filtered.length);
     }
 
-    // Rating filter
-    filtered = filtered.filter(account => account.seller.rating >= filters.minRating);
 
     // Sort
     switch (filters.sortBy) {
@@ -105,7 +150,7 @@ const Marketplace: React.FC = () => {
         filtered.sort((a, b) => b.price - a.price);
         break;
       case 'rating':
-        filtered.sort((a, b) => b.seller.rating - a.seller.rating);
+        filtered.sort((a, b) => (b.seller?.rating || 0) - (a.seller?.rating || 0));
         break;
       case 'popular':
         filtered.sort((a, b) => b.views - a.views);
@@ -116,6 +161,7 @@ const Marketplace: React.FC = () => {
         break;
     }
 
+    console.log('Final filtered accounts:', filtered.length);
     setFilteredAccounts(filtered);
     setCurrentPage(1);
   }, [accounts, filters]);
@@ -123,6 +169,16 @@ const Marketplace: React.FC = () => {
   const handleAccountClick = (accountId: string) => {
     window.location.href = `/account/${accountId}`;
   };
+
+  const handleViewProduct = (accountId: string) => {
+    window.location.href = `/account/${accountId}`;
+  };
+
+  const handleContactSeller = (sellerId: string, accountId: string) => {
+    // Navigate to chat page with account ID
+    window.location.href = `/chat/${accountId}`;
+  };
+
 
   if (loading) {
     return (
@@ -152,7 +208,17 @@ const Marketplace: React.FC = () => {
           <div className="lg:w-1/4">
             <Card className="sticky top-24">
               <CardHeader>
-                <CardTitle>Filters</CardTitle>
+                <div className="flex justify-between items-center">
+                  <CardTitle>Filters</CardTitle>
+                  <Button 
+                    onClick={resetFilters}
+                    variant="outline"
+                    size="sm"
+                    className="text-xs"
+                  >
+                    Reset
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="space-y-6">
                 {/* Game Filter */}
@@ -164,11 +230,7 @@ const Marketplace: React.FC = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Games</SelectItem>
-                      <SelectItem value="fifa">FIFA 24</SelectItem>
-                      <SelectItem value="valorant">Valorant</SelectItem>
-                      <SelectItem value="lol">League of Legends</SelectItem>
-                      <SelectItem value="pubg">PUBG</SelectItem>
-                      <SelectItem value="cod">Call of Duty</SelectItem>
+                      <SelectItem value="fc26">FC 26</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -197,30 +259,6 @@ const Marketplace: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Seller Rating */}
-                <div>
-                  <Label className="text-sm font-medium mb-3 block">Minimum Seller Rating</Label>
-                  <div className="flex space-x-1 mb-2">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <i
-                        key={star}
-                        className={`${
-                          star <= filters.minRating ? 'fas fa-star text-yellow-400' : 'far fa-star text-muted-foreground'
-                        } cursor-pointer`}
-                        onClick={() => handleFilterChange('minRating', star)}
-                      />
-                    ))}
-                  </div>
-                  <Slider
-                    value={[filters.minRating]}
-                    onValueChange={(value) => handleFilterChange('minRating', value[0])}
-                    min={1}
-                    max={5}
-                    step={0.5}
-                    className="w-full"
-                    data-testid="rating-slider"
-                  />
-                </div>
 
                 {/* Sort By */}
                 <div>
@@ -245,7 +283,18 @@ const Marketplace: React.FC = () => {
           {/* Marketplace Results */}
           <div className="lg:w-3/4">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold">Available Accounts</h2>
+              <div className="flex items-center space-x-4">
+                <h2 className="text-2xl font-bold">Available Accounts</h2>
+                <Button 
+                  onClick={handleRefresh}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center space-x-2"
+                >
+                  <i className="fas fa-sync-alt"></i>
+                  <span>Refresh</span>
+                </Button>
+              </div>
               <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                 <span data-testid="results-count">{filteredAccounts.length}</span>
                 <span>results found</span>
@@ -259,6 +308,7 @@ const Marketplace: React.FC = () => {
                   key={account.id}
                   account={account}
                   onClick={handleAccountClick}
+                  onContactSeller={handleContactSeller}
                 />
               ))}
             </div>
@@ -267,7 +317,6 @@ const Marketplace: React.FC = () => {
               <div className="text-center py-12">
                 <i className="fas fa-search text-muted-foreground text-4xl mb-4"></i>
                 <h3 className="text-lg font-semibold mb-2">No accounts found</h3>
-                <p className="text-muted-foreground">Try adjusting your filters to see more results.</p>
               </div>
             )}
 
@@ -315,6 +364,7 @@ const Marketplace: React.FC = () => {
           </div>
         </div>
       </div>
+      
     </div>
   );
 };

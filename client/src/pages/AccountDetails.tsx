@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ref, get, update } from 'firebase/database';
 import { database } from '../lib/firebase';
 import { GameAccount, User, Order } from '@shared/schema';
+import { formatCurrencySymbol } from '@/utils/currency';
 
 const AccountDetails: React.FC = () => {
   const [, params] = useRoute('/account/:id');
@@ -54,10 +55,17 @@ const AccountDetails: React.FC = () => {
             });
           }
 
-          // Increment view count
-          await update(ref(database, `gameAccounts/${params.id}`), {
-            views: (accountData.views || 0) + 1
-          });
+          // Increment view count (only once per user per session)
+          const viewKey = `viewed_${params.id}`;
+          if (!sessionStorage.getItem(viewKey)) {
+            const newViews = (accountData.views || 0) + 1;
+            await update(ref(database, `gameAccounts/${params.id}`), {
+              views: newViews
+            });
+            // Update local state immediately for better UX
+            setAccount(prev => prev ? { ...prev, views: newViews } : null);
+            sessionStorage.setItem(viewKey, 'true');
+          }
         }
       } catch (error) {
         console.error('Error fetching account details:', error);
@@ -104,6 +112,7 @@ const AccountDetails: React.FC = () => {
         sellerId: account.sellerId,
         accountId: account.id,
         amount: account.price,
+        price: account.price, // Add price field for compatibility
         status: 'escrow',
         escrowAmount: account.price,
         createdAt: new Date(),
@@ -264,24 +273,6 @@ const AccountDetails: React.FC = () => {
               </CardContent>
             </Card>
 
-            {/* Game-Specific Details */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Account Details</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-6" data-testid="game-specific-details">
-                  {Object.entries(account.gameSpecificData).map(([key, value]) => (
-                    <div key={key} className="flex justify-between items-center py-2 border-b border-border">
-                      <span className="text-muted-foreground capitalize font-medium">
-                        {key.replace(/([A-Z])/g, ' $1').trim()}:
-                      </span>
-                      <span className="font-semibold">{String(value)}</span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
           </div>
 
           {/* Purchase Panel */}
@@ -304,7 +295,7 @@ const AccountDetails: React.FC = () => {
 
                 <div className="flex items-baseline space-x-2 mb-6">
                   <span className="text-3xl font-bold text-primary" data-testid="account-price">
-                    ${account.price}
+                    {formatCurrencySymbol(account.price)}
                   </span>
                 </div>
 
@@ -317,29 +308,44 @@ const AccountDetails: React.FC = () => {
 
                 {currentUser ? (
                   account.status === 'active' ? (
-                    <Button
-                      className="w-full gradient-primary text-lg py-3"
-                      onClick={handlePurchase}
-                      disabled={purchasing || account.sellerId === currentUser.uid}
-                      data-testid="purchase-button"
-                    >
-                      {purchasing ? (
-                        <>
-                          <i className="fas fa-spinner fa-spin mr-2"></i>
-                          Processing...
-                        </>
-                      ) : account.sellerId === currentUser.uid ? (
-                        <>
-                          <i className="fas fa-user mr-2"></i>
-                          Your Account
-                        </>
-                      ) : (
-                        <>
-                          <i className="fas fa-shopping-cart mr-2"></i>
-                          Buy Now
-                        </>
+                    <div className="space-y-3">
+                      <Button
+                        className="w-full gradient-primary text-lg py-3"
+                        onClick={handlePurchase}
+                        disabled={purchasing || account.sellerId === currentUser.uid}
+                        data-testid="purchase-button"
+                      >
+                        {purchasing ? (
+                          <>
+                            <i className="fas fa-spinner fa-spin mr-2"></i>
+                            Processing...
+                          </>
+                        ) : account.sellerId === currentUser.uid ? (
+                          <>
+                            <i className="fas fa-user mr-2"></i>
+                            Your Account
+                          </>
+                        ) : (
+                          <>
+                            <i className="fas fa-shopping-cart mr-2"></i>
+                            Buy Now
+                          </>
+                        )}
+                      </Button>
+                      
+                      {account.sellerId !== currentUser.uid && (
+                        <Button
+                          variant="outline"
+                          className="w-full border-primary text-primary hover:bg-primary hover:text-white"
+                          onClick={() => {
+                            window.location.href = `/chat/${account.id}`;
+                          }}
+                        >
+                          <i className="fas fa-comments mr-2"></i>
+                          Contact Seller
+                        </Button>
                       )}
-                    </Button>
+                    </div>
                   ) : (
                     <Button
                       className="w-full"
@@ -364,7 +370,7 @@ const AccountDetails: React.FC = () => {
                 {currentUser && userProfile && userProfile.walletBalance < account.price && (
                   <Alert className="mt-4" variant="destructive">
                     <AlertDescription>
-                      Insufficient wallet balance. You need ${(account.price - userProfile.walletBalance).toFixed(2)} more.
+                      Insufficient wallet balance. You need {formatCurrencySymbol(account.price - userProfile.walletBalance)} more.
                     </AlertDescription>
                   </Alert>
                 )}
@@ -424,16 +430,12 @@ const AccountDetails: React.FC = () => {
                       {seller.reviewCount}
                     </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Response rate:</span>
-                    <span className="text-green-400">98%</span>
-                  </div>
                 </div>
 
                 <Button
                   variant="outline"
                   className="w-full mt-4"
-                  onClick={() => {/* TODO: Open seller profile */}}
+                  onClick={() => window.location.href = `/profile/${seller.id}`}
                   data-testid="view-seller-profile-button"
                 >
                   <i className="fas fa-user mr-2"></i>
@@ -442,33 +444,10 @@ const AccountDetails: React.FC = () => {
               </CardContent>
             </Card>
 
-            {/* Security Info */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Security & Safety</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                <div className="flex items-center space-x-2 text-green-400">
-                  <i className="fas fa-shield-check"></i>
-                  <span>Secure escrow protection</span>
-                </div>
-                <div className="flex items-center space-x-2 text-green-400">
-                  <i className="fas fa-undo"></i>
-                  <span>7-day account guarantee</span>
-                </div>
-                <div className="flex items-center space-x-2 text-green-400">
-                  <i className="fas fa-headset"></i>
-                  <span>24/7 customer support</span>
-                </div>
-                <div className="flex items-center space-x-2 text-green-400">
-                  <i className="fas fa-user-check"></i>
-                  <span>Verified seller</span>
-                </div>
-              </CardContent>
-            </Card>
           </div>
         </div>
       </div>
+      
     </div>
   );
 };
