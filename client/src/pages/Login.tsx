@@ -122,7 +122,7 @@ const Login: React.FC = () => {
           <div className="flex items-center justify-center mb-4">
             <div className="w-16 h-16 flex items-center justify-center mr-3">
               <img 
-                src="/src/Public/monkeyicn.png" 
+                src="/monkeyicn.png" 
                 alt="Monly King Logo" 
                 className="w-16 h-16 object-cover rounded-full shadow-lg"
               />

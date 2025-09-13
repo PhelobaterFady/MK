@@ -76,7 +76,7 @@ const Navigation: React.FC = () => {
                    <Link href="/" className="flex items-center space-x-6 group">
                      <div className="w-12 h-12 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 overflow-hidden rounded-full">
                        <img 
-                         src="/src/Public/monkeyicn.png" 
+                         src="/monkeyicn.png" 
                          alt="Monly King Logo" 
                          className="w-12 h-12 object-cover"
                        />
